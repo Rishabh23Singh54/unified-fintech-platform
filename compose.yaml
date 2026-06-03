@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: 'postgres:latest'
+    container_name: postgres-db
+    environment:
+      - 'POSTGRES_DB=unified_fintech_platform'
+      - 'POSTGRES_PASSWORD=postgres_secret'
+      - 'POSTGRES_USER=postgres_user'
+    ports:
+      - '5432:5432'
+    volumes:
+      # - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres_user -d unified_fintech_platform"]
+      interval: 5s      # How often to run the check
+      timeout: 5s       # How long to wait before failing a single check
+      retries: 5        # Number of consecutive failures before marking unhealthy
+      start_period: 5s  # Grace period for the container to boot before counting failures
+
+    restart: always
+
+  spring-app:
+    build: .
+    container_name: spring-app
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: unified_fintech_platform
+      DB_USER: postgres_user
+      DB_PASSWORD: postgres_secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+
+  flyway:
+    image: flyway/flyway:10
+    command: -url=jdbc:postgresql://postgres:5432/unified_fintech_platform -user=postgres_user -password=postgres_secret migrate
+    volumes:
+      # Mounts your local SQL migrations folder inside the Flyway container
+      - ./src/main/resources/db/migration:/flyway/sql
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 
+      always
+
+volumes:
+  postgres_data:
