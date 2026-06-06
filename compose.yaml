@@ -35,6 +35,12 @@ services:
       postgres:
         condition: service_healthy
     restart: always
+    develop:
+      watch:
+        - action: rebuild
+          path: ./src
+        - action: rebuild
+          path: ./pom.xml 
 
   flyway:
     image: flyway/flyway:10
